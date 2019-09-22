@@ -149,7 +149,7 @@ class Robot:
         return math.degrees(self.body.angle), lu, ld, lf, ru, rd, rf
 
     def draw_face(self, screen):
-        if self.body.position.x > 500:
+        if self.body.position.x > 550:
             rotated_face = rot_center(self.face, math.degrees(self.head_body.angle))
         else:
             rotated_face = rot_center(self.no_face, math.degrees(self.head_body.angle))
@@ -235,7 +235,7 @@ class Robot:
 def add_land(space):
     land_size = (screen_width - 300, 20)
     shape = pymunk.Poly.create_box(None, land_size)
-    shape.friction = 0.1
+    shape.friction = 0.5
     shape.elasticity = 1.0
     moment = pymunk.moment_for_poly(1, shape.get_vertices())
     body = pymunk.Body(9999, moment, body_type=pymunk.Body.KINEMATIC)
@@ -317,7 +317,8 @@ def robot_walk(genomes, config):
     font = pygame.font.SysFont("Arial", 30)
 
 
-    foundry = pygame.image.load('foundry.jpg')
+    foundry = pygame.image.load('foundry.png')
+    foundry = pygame.transform.scale(foundry, (600, 350))
 
     ruler = 0
     nets = []
@@ -369,11 +370,11 @@ def robot_walk(genomes, config):
                     elif i == 7 and robot.rd_flag == False:
                         robot.rd_motor.rate = -speed
                     elif i == 8 and robot.lf_flag == False:
-                        robot.lf_motor.rate = -speed
+                        robot.lf_motor.rate = speed
                     elif i == 9 and robot.lf_flag == False:
                         robot.lf_motor.rate = -speed
                     elif i == 10 and robot.rf_flag == False:
-                        robot.rf_motor.rate = -speed
+                        robot.rf_motor.rate = speed
                     elif i == 11 and robot.rf_flag == False:
                         robot.rf_motor.rate = -speed
 
@@ -401,7 +402,7 @@ def robot_walk(genomes, config):
 
         space.step(1/50.0)
         screen.fill((255, 255, 255))
-        screen.blit(foundry, (0, screen_height - 250))
+        screen.blit(foundry, (0, screen_height - 300))
         space.debug_draw(draw_options)
         robots[at].draw_face(screen)
 
@@ -413,6 +414,12 @@ def robot_walk(genomes, config):
         text = font.render("Speed up (x" + (str(speed_up+1)) +") after : " + str(int((600 - tick) / 60)) + " sec", True, (0, 0, 0))
         text_rect = text.get_rect()
         text_rect.center = (screen_width/2, 200)
+        screen.blit(text, text_rect)
+
+
+        text = font.render("EXIT->", True, (0, 0, 0))
+        text_rect = text.get_rect()
+        text_rect.center = (screen_width-50, 500)
         screen.blit(text, text_rect)
 
         for i in range(ruler, 1700, 100):
