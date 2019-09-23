@@ -15,7 +15,7 @@ generation = 0
 
 class Robot:
     def __init__(self):
-        moment = 10
+        moment = 100
         friction = 0.5
         self.shape = pymunk.Poly.create_box(None, (50, 100))
         body_moment = pymunk.moment_for_poly(moment, self.shape.get_vertices())
@@ -31,6 +31,24 @@ class Robot:
         self.head_shape = pymunk.Circle(self.head_body, 30)
         self.head_joint = pymunk.PivotJoint(self.head_body, self.body, (-5, -30), (-5, 50))
         self.head_joint2 = pymunk.PivotJoint(self.head_body, self.body, (5, -30), (5, 50))
+
+
+        arm_size = (100, 20)
+        self.left_arm_upper_shape = pymunk.Poly.create_box(None, arm_size)
+        left_arm_upper_moment = pymunk.moment_for_poly(moment, self.left_arm_upper_shape.get_vertices())
+        self.left_arm_upper_body = pymunk.Body(moment, left_arm_upper_moment)
+        self.left_arm_upper_body.position = (self.body.position.x-30, self.body.position.y)
+        self.left_arm_upper_shape.body = self.left_arm_upper_body
+        self.left_arm_upper_joint = pymunk.PivotJoint(self.left_arm_upper_body, self.body, (arm_size[0] / 2, 0), (-25, 30))
+        self.la_motor = pymunk.SimpleMotor(self.body, self.left_arm_upper_body, 0)
+
+        self.right_arm_upper_shape = pymunk.Poly.create_box(None, arm_size)
+        right_arm_upper_moment = pymunk.moment_for_poly(moment, self.right_arm_upper_shape.get_vertices())
+        self.right_arm_upper_body = pymunk.Body(moment, right_arm_upper_moment)
+        self.right_arm_upper_body.position = (self.body.position.x+30, self.body.position.y)
+        self.right_arm_upper_shape.body = self.right_arm_upper_body
+        self.right_arm_upper_joint = pymunk.PivotJoint(self.right_arm_upper_body, self.body, (-arm_size[0] / 2, 0), (25, 30))
+        self.ra_motor = pymunk.SimpleMotor(self.body, self.right_arm_upper_body, 0)
 
         thigh_size = (30, 60)
         self.lu_shape = pymunk.Poly.create_box(None, thigh_size)
@@ -71,14 +89,14 @@ class Robot:
         self.rd_motor = pymunk.SimpleMotor(self.ru_body, self.rd_body, 0)
 
 
-        foot_size = (40, 20)
+        foot_size = (45, 20)
         self.lf_shape = pymunk.Poly.create_box(None, foot_size)
         rd_moment = pymunk.moment_for_poly(moment, self.lf_shape.get_vertices())
         self.lf_body = pymunk.Body(moment, rd_moment)
         self.lf_body.position = (self.ld_body.position.x + foot_size[0]/2, self.ld_body.position.y + (foot_size[1]/2 + leg_size[1]/2))
         self.lf_shape.body = self.lf_body
         self.lf_shape.friction = friction
-        self.lf_joint = pymunk.PivotJoint(self.ld_body, self.lf_body, (-5, -leg_size[1] / 2), (-foot_size[0]/2, foot_size[1]/2))
+        self.lf_joint = pymunk.PivotJoint(self.ld_body, self.lf_body, (-5, -leg_size[1] / 2), (-foot_size[0]/2 + 10, foot_size[1]/2))
         self.lf_motor = pymunk.SimpleMotor(self.ld_body, self.lf_body, 0)
 
         self.rf_shape = pymunk.Poly.create_box(None, foot_size)
@@ -87,10 +105,12 @@ class Robot:
         self.rf_body.position = (self.rd_body.position.x + foot_size[0]/2, self.rd_body.position.y + (foot_size[1]/2 + leg_size[1]/2))
         self.rf_shape.body = self.rf_body
         self.rf_shape.friction = friction
-        self.rf_joint = pymunk.PivotJoint(self.rd_body, self.rf_body, (-5, -leg_size[1] / 2), (-foot_size[0]/2, foot_size[1]/2))
+        self.rf_joint = pymunk.PivotJoint(self.rd_body, self.rf_body, (-5, -leg_size[1] / 2), (-foot_size[0]/2 + 10, foot_size[1]/2))
         self.rf_motor = pymunk.SimpleMotor(self.rd_body, self.rf_body, 0)
 
         space.add(self.body, self.shape, self.head_body, self.head_shape, self.head_joint, self.head_joint2)
+        #space.add(self.left_arm_upper_body, self.left_arm_upper_shape, self.left_arm_upper_joint, self.la_motor)
+        #space.add(self.right_arm_upper_body, self.right_arm_upper_shape, self.right_arm_upper_joint, self.ra_motor)
         space.add(self.lu_body, self.lu_shape, self.lu_joint, self.lu_motor)
         space.add(self.ru_body, self.ru_shape, self.ru_joint, self.ru_motor)
         space.add(self.ld_body, self.ld_shape, self.ld_joint, self.ld_motor)
@@ -102,6 +122,8 @@ class Robot:
         shape_filter = pymunk.ShapeFilter(group=1)
         self.shape.filter = shape_filter
         self.head_shape.filter = shape_filter
+        self.left_arm_upper_shape.filter = shape_filter
+        self.right_arm_upper_shape.filter = shape_filter
         self.lu_shape.filter = shape_filter
         self.ru_shape.filter = shape_filter
         self.ld_shape.filter = shape_filter
@@ -118,6 +140,8 @@ class Robot:
         self.is_done = False
         self.distance = 0
 
+        self.la_flag = False
+        self.ra_flag = False
         self.lu_flag = False
         self.ld_flag = False
         self.ru_flag = False
@@ -128,6 +152,9 @@ class Robot:
     def get_shapes(self):
         body = self.body, self.shape
         head = self.head_body, self.head_shape, self.head_joint, self.head_joint2
+        #left_arm = self.left_arm_upper_body, self.left_arm_upper_shape, self.left_arm_upper_joint, self.la_motor
+        #right_arm = self.right_arm_upper_body, self.right_arm_upper_shape, self.right_arm_upper_joint, self.ra_motor
+
         left_up_leg = self.lu_body, self.lu_shape, self.lu_joint, self.lu_motor
         left_down_leg = self.ld_body, self.ld_shape, self.ld_joint, self.ld_motor
         left_foot = self.lf_body, self.lf_shape, self.lf_joint, self.lf_motor
@@ -135,8 +162,8 @@ class Robot:
         right_down_leg = self.rd_body, self.rd_shape, self.rd_joint, self.rd_motor
         right_foot = self.rf_body, self.rf_shape, self.rf_joint, self.rf_motor
 
-
         return body, head, left_up_leg, left_down_leg, left_foot, right_up_leg, right_down_leg, right_foot
+        #return body, head, left_arm, right_arm, left_up_leg, left_down_leg, left_foot, right_up_leg, right_down_leg, right_foot
 
     def get_data(self):
         lu = (360 - math.degrees(self.lu_body.angle)) - (360 - math.degrees(self.body.angle))
@@ -145,8 +172,10 @@ class Robot:
         ru = (360 - math.degrees(self.ru_body.angle)) - (360 - math.degrees(self.body.angle))
         rd = (360 - math.degrees(self.rd_body.angle)) - (360 - math.degrees(self.ru_body.angle))
         rf = (360 - math.degrees(self.rf_body.angle)) - (360 - math.degrees(self.rd_body.angle))
+        #la = (360 - math.degrees(self.left_arm_upper_body.angle)) - (360 - math.degrees(self.body.angle))
+        #ra = (360 - math.degrees(self.right_arm_upper_body.angle)) - (360 - math.degrees(self.body.angle))
 
-        return math.degrees(self.body.angle), lu, ld, lf, ru, rd, rf
+        return math.degrees(self.body.angle), lu, ld, lf, ru, rd, rf#, la, ra
 
     def draw_face(self, screen):
         if self.body.position.x > 550:
@@ -158,6 +187,8 @@ class Robot:
     def set_color(self, color, rest_color = (0, 0, 255), shoe_color = (50, 50, 50)):
         self.shape.color = color
         self.head_shape.color = color
+        #self.left_arm_upper_shape.color = rest_color
+        #self.right_arm_upper_shape.color = rest_color
         self.lu_shape.color = rest_color
         self.ld_shape.color = rest_color
         self.lf_shape.color = shoe_color
@@ -186,10 +217,10 @@ class Robot:
 
         #lf
         self.lf_flag = False
-        if (360 - math.degrees(self.lf_body.angle)) - (360 - math.degrees(self.ld_body.angle)) >= 15 and self.lf_motor.rate > 0:
+        if (360 - math.degrees(self.lf_body.angle)) - (360 - math.degrees(self.ld_body.angle)) >= 30 and self.lf_motor.rate > 0:
             self.lf_motor.rate = 0
             self.lf_flag = True
-        elif (360 - math.degrees(self.lf_body.angle)) - (360 - math.degrees(self.ld_body.angle)) <= -15 and self.lf_motor.rate < 0:
+        elif (360 - math.degrees(self.lf_body.angle)) - (360 - math.degrees(self.ld_body.angle)) <= -45 and self.lf_motor.rate < 0:
             self.lf_motor.rate = 0
             self.lf_flag = True
 
@@ -213,18 +244,23 @@ class Robot:
 
         #rf
         self.rf_flag = False
-        if (360 - math.degrees(self.rf_body.angle)) - (360 - math.degrees(self.rd_body.angle)) >= 15 and self.rf_motor.rate > 0:
+        if (360 - math.degrees(self.rf_body.angle)) - (360 - math.degrees(self.rd_body.angle)) >= 30 and self.rf_motor.rate > 0:
             self.rf_motor.rate = 0
             self.rf_flag = True
-        elif (360 - math.degrees(self.rf_body.angle)) - (360 - math.degrees(self.rd_body.angle)) <= -15 and self.rf_motor.rate < 0:
+        elif (360 - math.degrees(self.rf_body.angle)) - (360 - math.degrees(self.rd_body.angle)) <= -45 and self.rf_motor.rate < 0:
             self.rf_motor.rate = 0
             self.rf_flag = True
+
+        #self.la_flag = False
+        #self.ra_flag = False
 
         if self.body.position.y <= 100 or (self.head_body.position.x > 450 and self.head_body.position.y <= 350):
             self.is_done = True
 
     def add_space(self, space):
         space.add(self.body, self.shape, self.head_body, self.head_shape, self.head_joint)
+        #space.add(self.left_arm_upper_body, self.left_arm_upper_shape, self.left_arm_upper_joint, self.la_motor)
+        #space.add(self.right_arm_upper_body, self.right_arm_upper_shape, self.right_arm_upper_joint, self.ra_motor)
         space.add(self.lu_body, self.lu_shape, self.lu_joint, self.lu_motor)
         space.add(self.ru_body, self.ru_shape, self.ru_joint, self.ru_motor)
         space.add(self.ld_body, self.ld_shape, self.ld_joint, self.ld_motor)
@@ -262,7 +298,7 @@ def run_test():
     font = pygame.font.SysFont("Arial", 30)
 
     robot = Robot()
-    land, land_shape = add_land(space)
+    land = add_land(space)
 
     #main game
     speed = 1
@@ -305,7 +341,7 @@ def run_test():
             ruler = 550
 
         pygame.display.flip()
-        clock.tick(60)
+        clock.tick(0)
 
 
 def robot_walk(genomes, config):
@@ -350,7 +386,7 @@ def robot_walk(genomes, config):
 
         for i, robot in enumerate(robots):
             output = nets[i].activate(robot.get_data())
-            speed = 1
+            speed = 2
             for i, out in enumerate(output):
                 if out > 0.9:
                     if i == 0 and robot.lu_flag == False:
@@ -377,6 +413,16 @@ def robot_walk(genomes, config):
                         robot.rf_motor.rate = speed
                     elif i == 11 and robot.rf_flag == False:
                         robot.rf_motor.rate = -speed
+                    """
+                    elif i == 12 and robot.la_flag == False:
+                        robot.la_motor.rate = speed
+                    elif i == 13 and robot.la_flag == False:
+                        robot.la_motor.rate = -speed
+                    elif i == 14 and robot.ra_flag == False:
+                        robot.ra_motor.rate = speed
+                    elif i == 15 and robot.ra_flag == False:
+                        robot.ra_motor.rate = -speed
+                    """
 
         # check
         max = 0
@@ -385,7 +431,10 @@ def robot_walk(genomes, config):
             robot.update()
             robot.set_color((240, 240, 240), (240, 240, 240), (240, 240, 240))
             ge[i].fitness += 0.1
-
+            distance = robot.body.position.x
+            if distance > robot.distance:
+                ge[i].fitness += 0.1
+            robot.distance = distance
             if robot.body.position.x > max:
                 max = robot.body.position.x
                 at = i
@@ -400,6 +449,7 @@ def robot_walk(genomes, config):
             speed_up += 1
             tick = 0
 
+        #space.step(1/50.0)
         space.step(1/50.0)
         screen.fill((255, 255, 255))
         screen.blit(foundry, (0, screen_height - 300))
@@ -434,6 +484,8 @@ def robot_walk(genomes, config):
             robot.ru_motor.rate = 0
             robot.ld_motor.rate = 0
             robot.rd_motor.rate =  0
+            robot.lf_motor.rate = 0
+            robot.rf_motor.rate =  0
 
             if robot.body.position.x >= 1700:
                 ge[i].fitness += 100
