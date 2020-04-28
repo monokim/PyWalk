@@ -15,11 +15,12 @@ generation = 0
 
 class Robot:
     def __init__(self):
-        moment = 10
+        moment = 5
         friction = 0.5
         self.shape = pymunk.Poly.create_box(None, (50, 100))
         body_moment = pymunk.moment_for_poly(moment, self.shape.get_vertices())
         self.body = pymunk.Body(moment, body_moment)
+        #self.body = pymunk.Body(body_type=pymunk.Body.STATIC)
 
         self.body.position = (screen_width/2, 500)
         self.shape.body = self.body
@@ -255,6 +256,7 @@ class Robot:
 
         if self.body.position.y <= 100 or (self.head_body.position.x > 450 and self.head_body.position.y <= 350):
             self.is_done = True
+            space.remove(self.get_shapes())
 
     def add_space(self, space):
         space.add(self.body, self.shape, self.head_body, self.head_shape, self.head_joint)
@@ -277,7 +279,7 @@ def add_land(space):
     body.position = (screen_width/2 + 300, 300)
     shape.body = body
     space.add(body, shape)
-    shape.surface_velocity = (-100,0)
+    #shape.surface_velocity = (-100,0)
 
     return shape
 
@@ -288,64 +290,6 @@ def rot_center(image, angle):
     rot_rect.center = rot_image.get_rect().center
     rot_image = rot_image.subsurface(rot_rect).copy()
     return rot_image
-
-def run_test():
-    pygame.init()
-    screen = pygame.display.set_mode((screen_width, screen_height))
-    clock = pygame.time.Clock()
-    draw_options = pymunk.pygame_util.DrawOptions(screen)
-    font = pygame.font.SysFont("Arial", 30)
-
-    robot = Robot()
-    land = add_land(space)
-
-    foundry = pygame.image.load('foundry.png')
-    foundry = pygame.transform.scale(foundry, (600, 350))
-
-    #main game
-    speed = 1
-    ruler = 300
-    while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                sys.exit(0)
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    robot.rf_motor.rate = speed
-                elif event.key == pygame.K_DOWN:
-                    robot.rf_motor.rate = -speed
-                elif event.key == pygame.K_RIGHT:
-                    robot.ru_motor.rate = speed
-                elif event.key == pygame.K_LEFT:
-                    robot.ru_motor.rate = -speed
-
-                if event.key == pygame.K_w:
-                    robot.lf_motor.rate = speed
-                elif event.key == pygame.K_s:
-                    robot.lf_motor.rate = -speed
-                elif event.key == pygame.K_a:
-                    robot.lu_motor.rate = speed
-                elif event.key == pygame.K_d:
-                    robot.lu_motor.rate = -speed
-
-        robot.update()
-        #land._set_position((land.position.x + 1, land.position.y))
-        ruler -= 1
-        space.step(1/50.0)
-        screen.fill((255, 255, 255))
-        screen.blit(foundry, (0, screen_height - 300))
-        space.debug_draw(draw_options)
-        robot.draw_face(screen)
-
-        for i in range(ruler, 1700, 100):
-            pygame.draw.line(screen, (0, 0, 0), (i, screen_height - 300), (i, screen_height - 290))
-
-        if ruler < 450:
-            ruler = 550
-
-        pygame.display.flip()
-        clock.tick(60)
-
 
 def robot_walk(genomes, config):
     pygame.init()
@@ -361,7 +305,6 @@ def robot_walk(genomes, config):
 
     ruler = 0
     nets = []
-    ge = []
     robots = []
 
     for id, g in genomes:
@@ -369,9 +312,9 @@ def robot_walk(genomes, config):
         nets.append(net)
         robots.append(Robot())
         g.fitness = 0
-        ge.append(g)
 
     land = add_land(space)
+    land.surface_velocity = (-100, 0)
 
     #main game
     global generation
@@ -382,10 +325,6 @@ def robot_walk(genomes, config):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit(0)
-
-
-        if len(robots) == 0:
-            break
 
         for i, robot in enumerate(robots):
             output = nets[i].activate(robot.get_data())
@@ -420,17 +359,24 @@ def robot_walk(genomes, config):
         # check
         max = 0
         at = 0
+        remain_robot = 0
         for i, robot in enumerate(robots):
-            robot.update()
-            robot.set_color((240, 240, 240), (240, 240, 240), (240, 240, 240))
-            ge[i].fitness += 0.1
-            distance = robot.body.position.x
-            if distance > robot.distance:
-                ge[i].fitness += 0.1
-            robot.distance = distance
-            if robot.body.position.x > max:
-                max = robot.body.position.x
-                at = i
+            if not robot.is_done:
+                remain_robot += 1
+                robot.update()
+                robot.set_color((240, 240, 240), (240, 240, 240), (240, 240, 240))
+                genomes[i][1].fitness += 0.1
+                distance = robot.body.position.x
+                if distance > robot.distance:
+                    genomes[i][1].fitness += 0.1
+                robot.distance = distance
+                if robot.body.position.x > max:
+                    max = robot.body.position.x
+                    at = i
+
+
+        if remain_robot == 0:
+            break
 
         robots[at].set_color((255, 0, 0))
         robot_position = robots[at].body.position
@@ -472,24 +418,13 @@ def robot_walk(genomes, config):
             ruler = 550
 
         for i, robot in enumerate(robots):
-
-            robot.lu_motor.rate = 0
-            robot.ru_motor.rate = 0
-            robot.ld_motor.rate = 0
-            robot.rd_motor.rate =  0
-            robot.lf_motor.rate = 0
-            robot.rf_motor.rate =  0
-
-            if robot.body.position.x >= 1700:
-                ge[i].fitness += 100
-                space.remove(robot.get_shapes())
-                robots.remove(robot)
-                ge.pop(i)
-            elif robot.is_done:
-                ge[i].fitness -= 1
-                space.remove(robot.get_shapes())
-                robots.remove(robot)
-                ge.pop(i)
+            if not robot.is_done:
+                robot.lu_motor.rate = 0
+                robot.ru_motor.rate = 0
+                robot.ld_motor.rate = 0
+                robot.rd_motor.rate =  0
+                robot.lf_motor.rate = 0
+                robot.rf_motor.rate =  0
 
 
         pygame.display.flip()
@@ -507,10 +442,8 @@ def run(config_path):
     generation = 0
     winner = p.run(robot_walk, 1000)
 
-
-#run_test()
-
 if __name__ == "__main__":
+    __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
     local_dir = os.path.dirname(__file__)
     config_path = os.path.join(local_dir, "config-feedforward.txt")
     run(config_path)
